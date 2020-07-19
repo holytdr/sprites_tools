@@ -49,7 +49,7 @@ def alpha_scale(img, alpha):
     return new_img
 
 
-def combine_subframes(image, acts, pic_size=(1000, 1000)):
+def combine_subframes(image, acts, scale=1.0):
     raw_frames = [get_subimage(image, rect) for rect in acts['frame_rects']]
     combined = {}
     # loop over actions
@@ -60,20 +60,30 @@ def combine_subframes(image, acts, pic_size=(1000, 1000)):
             frames = []
             keys = ['image_n', 'offset_x', 'offset_y', 'rotation', 'scale_x', 'scale_y', 'opacity', 'direction']
             for i in range(len(anim['image_n'])):
-                vals = [anim[key][i] for key in keys]
-                vals = np.array(vals).T
-                frame = Image.new('RGBA', pic_size, (255, 255, 255, 0))
+                vals = np.array([anim[key][i] for key in keys]).T
+                # # loop over subframes and find a proper pic size
+                # max_x, max_y = 0, 0
+                # for (idx, offx, offy, rot, scx, scy, op, mir) in vals:
+                #     ifr = int(idx)
+                #     size = np.array([raw_frames[ifr].width, raw_frames[ifr].height])
+                #     offset = np.abs([offx, offy])*2.0
+                #     max_x = max(max_x, (size + offset)[0]*scx)
+                #     max_y = max(max_y, (size + offset)[1]*scy)
+                # pic_size = (np.array([max_x, max_y])*scale + np.array([1, 1])).astype(int)
+                pic_size = (1000, 1000)
+                frame = Image.new('RGBA', tuple(pic_size), (255, 255, 255, 0))
                 center = np.array(pic_size)/2
                 # loop over subframes and stack them
                 for (idx, offx, offy, rot, scx, scy, op, mir) in vals:
                     ifr = int(idx)
-                    size = (int(scx*raw_frames[ifr].width), int(scy*raw_frames[ifr].height))
-                    pos = (int(center[0] - offx - (size[0]/2.)), int(center[1] - offy - size[1]/2.))
-                    subf = raw_frames[ifr].resize(size=size)
+                    size = np.array([scx*raw_frames[ifr].width, scy*raw_frames[ifr].height])*scale
+                    offset = np.array([offx*scx, offy*scy])*scale
+                    subf = raw_frames[ifr].resize(size=tuple(size.astype(int)))
                     if mir:
                         subf = subf.transpose(Image.FLIP_LEFT_RIGHT)
                         rot = -rot
-                    frame.alpha_composite(alpha_scale(subf, op/255).rotate(rot), pos)
+                    pos = center - offset - size/2.
+                    frame.alpha_composite(alpha_scale(subf, op/255).rotate(rot), tuple(pos.astype(int)))
                 # finish one frame
                 frames.append(frame)
             # finish one direction for one action
@@ -132,9 +142,9 @@ class AnimeLabel(QLabel):
 
 
 class AnimationViewer(QWidget):
-    def __init__(self, texture, action_json, label_size=(200, 200), dir_names=dir_names, action_names=action_names):
+    def __init__(self, texture, action_json, label_size=(200, 200), scale=1.0):
         super(AnimationViewer, self).__init__()
-        animations = combine_subframes(texture, action_json)
+        animations = combine_subframes(texture, action_json, scale)
         self.labels = []
         hbox = QHBoxLayout()
         vbox = QVBoxLayout()
@@ -184,13 +194,13 @@ class AnimationViewer(QWidget):
 
 if __name__ == '__main__':
     data_dir = r'E:\GameProjects\wx_td2\assets\resources\sprites'
-    name = 'wolf'
+    name = 'poring'
     image = Image.open(os.path.join(data_dir, '{}.png'.format(name))).convert("RGBA")
     f = open(os.path.join(data_dir, '{}.json'.format(name)))
     acts = json.load(f)
 
     app = QApplication(sys.argv)
-    w = AnimationViewer(image, acts)
+    w = AnimationViewer(image, acts, (200, 200), 2.0)
     w.play()
     w.show()
     sys.exit(app.exec_())

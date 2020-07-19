@@ -112,8 +112,9 @@ f = open(os.path.join(data_dir, '{}.json'.format(name)))
 # json_attrs = json.load(f)
 
 # ==== show the built animations ====
+scale = 1.5
 app = QApplication(sys.argv)
-w = AnimationViewer(full_img, json_attrs, (200, 200))
+w = AnimationViewer(full_img, json_attrs, (200, 200), scale)
 w.play()
 w.show()
 sys.exit(app.exec_())
