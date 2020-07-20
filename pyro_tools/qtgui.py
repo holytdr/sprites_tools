@@ -96,7 +96,7 @@ def combine_subframes(image, acts, scale=1.0):
 # animated Qlabel
 class AnimeLabel(QLabel):
     # interval is in ms
-    def __init__(self, frames, speed, flip=False, size=(200, 200), interval=10):
+    def __init__(self, frames, speed, flip=False, size=(200, 200), center=(0, 0), interval=10):
         super(AnimeLabel, self).__init__()
 
         # basic attributes
@@ -105,6 +105,7 @@ class AnimeLabel(QLabel):
         self.frameSize = np.asarray(size)
         self.frames = frames
         self.iframe = 0
+        self.anim_center = np.asarray(center)
 
         # define timer to refresh
         self.qTimer = QTimer()
@@ -127,7 +128,7 @@ class AnimeLabel(QLabel):
     def set_frame(self, i):
         frame = self.frames[i]
         # crop it
-        center = np.array([frame.width, frame.height])/2.
+        center = np.array([frame.width, frame.height])/2. - self.anim_center
         crop_rect = tuple(np.concatenate([center - self.frameSize/2., center + self.frameSize/2.]).astype(int))
         frame_img = frame.crop(crop_rect)
         if self.flip:
@@ -142,12 +143,13 @@ class AnimeLabel(QLabel):
 
 
 class AnimationViewer(QWidget):
-    def __init__(self, texture, action_json, label_size=(200, 200), scale=1.0):
+    def __init__(self, texture, action_json, label_size=(200, 200), center=(0, 0), scale=1.0):
         super(AnimationViewer, self).__init__()
         animations = combine_subframes(texture, action_json, scale)
         self.labels = []
         hbox = QHBoxLayout()
         vbox = QVBoxLayout()
+        vbox.addWidget(QLabel(self))
         # direction name labels
         for dir_name in dir_names:
             # text label
@@ -171,10 +173,10 @@ class AnimationViewer(QWidget):
             label.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
             vbox.addWidget(label)
             # four direction animations
-            dir1 = AnimeLabel(actions[0]['frames'], actions[0]['speed'], False, label_size)
-            dir2 = AnimeLabel(actions[0]['frames'], actions[0]['speed'], True, label_size)
-            dir3 = AnimeLabel(actions[1]['frames'], actions[1]['speed'], True, label_size)
-            dir4 = AnimeLabel(actions[1]['frames'], actions[1]['speed'], False, label_size)
+            dir1 = AnimeLabel(actions[0]['frames'], actions[0]['speed'], False, label_size, center)
+            dir2 = AnimeLabel(actions[0]['frames'], actions[0]['speed'], True, label_size, center)
+            dir3 = AnimeLabel(actions[1]['frames'], actions[1]['speed'], True, label_size, center)
+            dir4 = AnimeLabel(actions[1]['frames'], actions[1]['speed'], False, label_size, center)
             for dir in [dir1, dir2, dir3, dir4]:
                 self.labels.append(dir)
                 vbox.addWidget(dir)
